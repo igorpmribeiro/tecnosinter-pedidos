@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { requireAdmin, requireUser } from "@/lib/auth/dal";
 
 const orderItemSchema = z.object({
   productName: z.string().trim().min(1, "Nome do produto é obrigatório"),
@@ -12,7 +13,7 @@ const orderItemSchema = z.object({
   unitPrice: z.coerce.number().nonnegative("Preço não pode ser negativo"),
 });
 
-const createOrderSchema = z.object({
+const orderSchema = z.object({
   orderNumber: z.string().trim().min(1, "Número do pedido é obrigatório"),
   supplierName: z.string().trim().min(1, "Fornecedor é obrigatório"),
   departmentName: z.string().trim().min(1, "Departamento é obrigatório"),
@@ -25,7 +26,7 @@ const createOrderSchema = z.object({
   items: z.array(orderItemSchema).min(1, "Adicione ao menos 1 produto"),
 });
 
-export type CreateOrderInput = z.infer<typeof createOrderSchema>;
+export type OrderInput = z.infer<typeof orderSchema>;
 
 function parseLocalDate(value: string | undefined): Date {
   if (!value) return new Date();
@@ -35,12 +36,8 @@ function parseLocalDate(value: string | undefined): Date {
   return new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0);
 }
 
-export async function createOrder(raw: CreateOrderInput) {
-  const parsed = createOrderSchema.parse(raw);
-  const orderedAt = parseLocalDate(parsed.orderedAt);
-
-  const [existing, supplier, department, existingReason] = await Promise.all([
-    db.order.findUnique({ where: { orderNumber: parsed.orderNumber } }),
+async function resolveOrderRefs(parsed: OrderInput, orderedAt: Date) {
+  const [supplier, department, existingReason] = await Promise.all([
     db.supplier.upsert({
       where: { name: parsed.supplierName },
       update: {},
@@ -54,10 +51,6 @@ export async function createOrder(raw: CreateOrderInput) {
     db.reason.findUnique({ where: { description: parsed.reasonDescription } }),
   ]);
 
-  if (existing) {
-    throw new Error(`Pedido ${parsed.orderNumber} já existe.`);
-  }
-
   const requester = await db.requester.upsert({
     where: {
       name_departmentId: {
@@ -68,6 +61,7 @@ export async function createOrder(raw: CreateOrderInput) {
     update: {},
     create: { name: parsed.requesterName, departmentId: department.id },
   });
+
   let reason;
   if (existingReason) {
     reason = await db.reason.update({
@@ -117,6 +111,22 @@ export async function createOrder(raw: CreateOrderInput) {
     }),
   );
 
+  return { supplier, department, requester, reason, itemsWithProducts };
+}
+
+export async function createOrder(raw: OrderInput) {
+  const me = await requireUser();
+  const parsed = orderSchema.parse(raw);
+  const orderedAt = parseLocalDate(parsed.orderedAt);
+
+  const existing = await db.order.findUnique({
+    where: { orderNumber: parsed.orderNumber },
+  });
+  if (existing) throw new Error(`Pedido ${parsed.orderNumber} já existe.`);
+
+  const { supplier, department, requester, reason, itemsWithProducts } =
+    await resolveOrderRefs(parsed, orderedAt);
+
   const created = await db.order.create({
     data: {
       orderNumber: parsed.orderNumber,
@@ -128,6 +138,7 @@ export async function createOrder(raw: CreateOrderInput) {
       departmentId: department.id,
       requesterId: requester.id,
       reasonId: reason.id,
+      createdById: me.id,
       items: { create: itemsWithProducts },
     },
   });
@@ -136,4 +147,84 @@ export async function createOrder(raw: CreateOrderInput) {
   revalidatePath("/produtos");
   revalidatePath("/motivos");
   redirect(`/pedidos/${created.id}`);
+}
+
+export async function updateOrder(orderId: string, raw: OrderInput) {
+  await requireUser();
+  const parsed = orderSchema.parse(raw);
+  const orderedAt = parseLocalDate(parsed.orderedAt);
+
+  const current = await db.order.findUnique({ where: { id: orderId } });
+  if (!current) throw new Error("Pedido não encontrado.");
+
+  if (parsed.orderNumber !== current.orderNumber) {
+    const conflict = await db.order.findUnique({
+      where: { orderNumber: parsed.orderNumber },
+    });
+    if (conflict) throw new Error(`Pedido ${parsed.orderNumber} já existe.`);
+  }
+
+  const { supplier, department, requester, reason, itemsWithProducts } =
+    await resolveOrderRefs(parsed, orderedAt);
+
+  await db.$transaction([
+    db.orderItem.deleteMany({ where: { orderId } }),
+    db.order.update({
+      where: { id: orderId },
+      data: {
+        orderNumber: parsed.orderNumber,
+        orderedAt,
+        deliveryDays: parsed.deliveryDays,
+        costCenter: parsed.costCenter || null,
+        authorizedBy: parsed.authorizedBy || null,
+        supplierId: supplier.id,
+        departmentId: department.id,
+        requesterId: requester.id,
+        reasonId: reason.id,
+        items: { create: itemsWithProducts },
+      },
+    }),
+  ]);
+
+  revalidatePath("/pedidos");
+  revalidatePath(`/pedidos/${orderId}`);
+  revalidatePath("/produtos");
+  revalidatePath("/motivos");
+  redirect(`/pedidos/${orderId}`);
+}
+
+export async function approveOrder(orderId: string): Promise<void> {
+  const me = await requireAdmin();
+  await db.order.update({
+    where: { id: orderId },
+    data: {
+      status: "APROVADO",
+      rejectionReason: null,
+      reviewedAt: new Date(),
+      reviewedById: me.id,
+    },
+  });
+  revalidatePath("/pedidos");
+  revalidatePath(`/pedidos/${orderId}`);
+}
+
+export async function rejectOrder(
+  orderId: string,
+  reason: string,
+): Promise<void> {
+  const me = await requireAdmin();
+  const trimmed = reason.trim();
+  if (!trimmed) throw new Error("Informe o motivo da reprovação.");
+
+  await db.order.update({
+    where: { id: orderId },
+    data: {
+      status: "REPROVADO",
+      rejectionReason: trimmed,
+      reviewedAt: new Date(),
+      reviewedById: me.id,
+    },
+  });
+  revalidatePath("/pedidos");
+  revalidatePath(`/pedidos/${orderId}`);
 }

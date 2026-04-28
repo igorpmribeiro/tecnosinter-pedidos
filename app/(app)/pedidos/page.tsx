@@ -28,6 +28,7 @@ export default async function PedidosPage() {
     requester: o.requester.name,
     itemCount: o.items.length,
     total: o.items.reduce((sum, item) => sum + item.totalPrice, 0),
+    status: o.status,
   }));
 
   const totalValue = rows.reduce((sum, o) => sum + o.total, 0);

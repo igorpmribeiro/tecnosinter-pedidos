@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { NewOrderForm } from "./new-order-form";
+import { OrderForm } from "../order-form";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,7 @@ export default async function NovoPedidoPage() {
         </p>
       </div>
 
-      <NewOrderForm
+      <OrderForm
         products={products.map((p) => ({
           name: p.name,
           unit: p.unit,
@@ -41,7 +41,10 @@ export default async function NovoPedidoPage() {
           lastUsedAt: r.lastUsedAt?.toISOString() ?? null,
           previousUsedAt: r.previousUsedAt?.toISOString() ?? null,
         }))}
-        suggestedOrderNumber={nextOrderNumber(lastOrder?.orderNumber)}
+        mode={{
+          kind: "create",
+          suggestedOrderNumber: nextOrderNumber(lastOrder?.orderNumber),
+        }}
       />
     </div>
   );

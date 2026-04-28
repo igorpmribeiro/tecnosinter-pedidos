@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { currency, formatDate, UNITS } from "@/lib/format";
-import { createOrder } from "../actions";
+import { createOrder, updateOrder } from "./actions";
 
 const schema = z.object({
   orderNumber: z.string().trim().min(1, "Obrigatório"),
@@ -64,28 +64,48 @@ type ReasonInfo = {
   previousUsedAt: string | null;
 };
 
+type Mode =
+  | { kind: "create"; suggestedOrderNumber: string }
+  | { kind: "edit"; orderId: string; initial: FormValues };
+
 type Props = {
   products: ProductInfo[];
   suppliers: string[];
   departments: string[];
   requesters: string[];
   reasons: ReasonInfo[];
-  suggestedOrderNumber: string;
+  mode: Mode;
 };
 
-export function NewOrderForm({
+export function OrderForm({
   products,
   suppliers,
   departments,
   requesters,
   reasons,
-  suggestedOrderNumber,
+  mode,
 }: Props) {
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
   const router = useRouter();
 
   const today = new Date().toISOString().slice(0, 10);
+
+  const defaultValues: FormValues =
+    mode.kind === "edit"
+      ? mode.initial
+      : {
+          orderNumber: mode.suggestedOrderNumber,
+          orderedAt: today,
+          supplierName: "",
+          departmentName: "",
+          requesterName: "",
+          reasonDescription: "",
+          deliveryDays: 20,
+          costCenter: "",
+          authorizedBy: "",
+          items: [{ productName: "", unit: "Unid.", quantity: 1, unitPrice: 0 }],
+        };
 
   const {
     register,
@@ -96,20 +116,7 @@ export function NewOrderForm({
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      orderNumber: suggestedOrderNumber,
-      orderedAt: today,
-      supplierName: "",
-      departmentName: "",
-      requesterName: "",
-      reasonDescription: "",
-      deliveryDays: 20,
-      costCenter: "",
-      authorizedBy: "",
-      items: [
-        { productName: "", unit: "Unid.", quantity: 1, unitPrice: 0 },
-      ],
-    },
+    defaultValues,
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
@@ -152,7 +159,11 @@ export function NewOrderForm({
     setServerError(null);
     startTransition(async () => {
       try {
-        await createOrder(values);
+        if (mode.kind === "edit") {
+          await updateOrder(mode.orderId, values);
+        } else {
+          await createOrder(values);
+        }
       } catch (err) {
         if (err instanceof Error && err.message.startsWith("NEXT_REDIRECT"))
           return;
@@ -162,6 +173,15 @@ export function NewOrderForm({
       }
     });
   }
+
+  const submitLabel =
+    mode.kind === "edit"
+      ? isPending
+        ? "Salvando..."
+        : "Salvar alterações"
+      : isPending
+        ? "Salvando..."
+        : "Salvar pedido";
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -442,12 +462,16 @@ export function NewOrderForm({
           type="button"
           variant="outline"
           disabled={isPending}
-          onClick={() => router.push("/pedidos")}
+          onClick={() =>
+            router.push(
+              mode.kind === "edit" ? `/pedidos/${mode.orderId}` : "/pedidos",
+            )
+          }
         >
           Cancelar
         </Button>
         <Button type="submit" disabled={isPending}>
-          {isPending ? "Salvando..." : "Salvar pedido"}
+          {submitLabel}
         </Button>
       </div>
     </form>
