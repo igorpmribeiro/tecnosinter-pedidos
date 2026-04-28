@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id            String      @id @default(cuid())
+  name          String      @unique
+  unit          String
+  lastPrice     Float?
+  lastOrderedAt DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  orderItems    OrderItem[]
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  orders    Order[]
+}
+
+model Department {
+  id         String      @id @default(cuid())
+  name       String      @unique
+  createdAt  DateTime    @default(now())
+  orders     Order[]
+  requesters Requester[]
+}
+
+model Requester {
+  id           String     @id @default(cuid())
+  name         String
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  createdAt    DateTime   @default(now())
+  orders       Order[]
+
+  @@unique([name, departmentId])
+}
+
+model Reason {
+  id              String    @id @default(cuid())
+  description     String    @unique
+  lastUsedAt      DateTime?
+  previousUsedAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  orders          Order[]
+}
+
+model Order {
+  id             String      @id @default(cuid())
+  orderNumber    String      @unique
+  orderedAt      DateTime    @default(now())
+  deliveryDays   Int
+  costCenter     String?
+  authorizedBy   String?
+  supplierId     String
+  supplier       Supplier    @relation(fields: [supplierId], references: [id])
+  departmentId   String
+  department     Department  @relation(fields: [departmentId], references: [id])
+  requesterId    String
+  requester      Requester   @relation(fields: [requesterId], references: [id])
+  reasonId       String
+  reason         Reason      @relation(fields: [reasonId], references: [id])
+  items          OrderItem[]
+  createdAt      DateTime    @default(now())
+}
+
+model OrderItem {
+  id            String  @id @default(cuid())
+  orderId       String
+  order         Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product @relation(fields: [productId], references: [id])
+  quantity      Float
+  unitPrice     Float
+  totalPrice    Float
+
+  @@index([orderId])
+  @@index([productId])
+}
