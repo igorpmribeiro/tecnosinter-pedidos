@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, Download, Pencil, X } from "lucide-react";
+import { Check, Download, Loader2, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +28,6 @@ export function OrderActionsBar({ orderId, status, isAdmin }: Props) {
   const [pending, startTransition] = useTransition();
   const [rejectOpen, setRejectOpen] = useState(false);
   const [reason, setReason] = useState("");
-
   const canReview = isAdmin && status === "AGUARDANDO";
 
   function onApprove() {
@@ -63,32 +62,49 @@ export function OrderActionsBar({ orderId, status, isAdmin }: Props) {
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       {canReview && (
         <>
           <Button
+            type="button"
             variant="outline"
             onClick={() => setRejectOpen(true)}
             disabled={pending}
+            aria-label="Reprovar pedido"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden />
             Reprovar
           </Button>
-          <Button onClick={onApprove} disabled={pending}>
-            <Check className="h-4 w-4" />
+          <Button
+            type="button"
+            onClick={onApprove}
+            disabled={pending}
+            aria-label="Aprovar pedido"
+            className="bg-emerald-600 text-white hover:bg-emerald-700"
+          >
+            {pending ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <Check className="h-4 w-4" aria-hidden />
+            )}
             Aprovar
           </Button>
         </>
       )}
       <Button asChild variant="outline">
-        <Link href={`/pedidos/${orderId}/editar`}>
-          <Pencil className="h-4 w-4" />
+        <Link href={`/pedidos/${orderId}/editar`} aria-label="Editar pedido">
+          <Pencil className="h-4 w-4" aria-hidden />
           Editar
         </Link>
       </Button>
       <Button asChild>
-        <a href={`/pedidos/${orderId}/pdf`} target="_blank">
-          <Download className="h-4 w-4" />
+        <a
+          href={`/pedidos/${orderId}/pdf`}
+          target="_blank"
+          rel="noopener"
+          aria-label="Baixar PDF do pedido"
+        >
+          <Download className="h-4 w-4" aria-hidden />
           Baixar PDF
         </a>
       </Button>
@@ -110,6 +126,7 @@ export function OrderActionsBar({ orderId, status, isAdmin }: Props) {
               rows={4}
               placeholder="Ex.: Falta de orçamento aprovado para o setor."
               autoFocus
+              required
             />
           </div>
           <DialogFooter>
@@ -126,7 +143,12 @@ export function OrderActionsBar({ orderId, status, isAdmin }: Props) {
               onClick={onReject}
               disabled={pending || !reason.trim()}
             >
-              {pending ? "Reprovando..." : "Reprovar pedido"}
+              {pending ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <X className="h-4 w-4" aria-hidden />
+              )}
+              Reprovar pedido
             </Button>
           </DialogFooter>
         </DialogContent>

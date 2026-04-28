@@ -1,8 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { db } from "@/lib/db";
-import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/page-header";
 import { OrderForm } from "../../order-form";
 
 export const dynamic = "force-dynamic";
@@ -38,21 +36,24 @@ export default async function EditarPedidoPage({
   const orderedAtIso = order.orderedAt.toISOString().slice(0, 10);
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-1">
-        <Button asChild variant="ghost" size="sm" className="-ml-3">
-          <Link href={`/pedidos/${order.id}`}>
-            <ArrowLeft className="h-4 w-4" />
-            Voltar
-          </Link>
-        </Button>
-        <h1 className="text-3xl font-bold tracking-tight">
-          Editar pedido <span className="font-mono">{order.orderNumber}</span>
-        </h1>
-        <p className="text-muted-foreground">
-          Altere os dados ou itens. As alterações refletem no PDF.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title={
+          <span className="inline-flex items-baseline gap-2">
+            Editar pedido
+            <span className="font-mono text-foreground/70">
+              {order.orderNumber}
+            </span>
+          </span>
+        }
+        description="Altere os dados ou itens. As alterações refletem no PDF."
+        breadcrumbs={[
+          { label: "Pedidos", href: "/pedidos" },
+          { label: order.orderNumber, href: `/pedidos/${order.id}` },
+          { label: "Editar" },
+        ]}
+        backHref={`/pedidos/${order.id}`}
+      />
 
       <OrderForm
         products={products.map((p) => ({

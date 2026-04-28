@@ -1,8 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { db } from "@/lib/db";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -19,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { currency, formatDate } from "@/lib/format";
 import { OrderStatusBadge } from "@/components/order-status-badge";
+import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth/dal";
 import { OrderActionsBar } from "./order-actions-bar";
 
@@ -55,57 +53,69 @@ export default async function OrderDetailPage({
   }, null);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1">
-          <Button asChild variant="ghost" size="sm" className="-ml-3">
-            <Link href="/pedidos">
-              <ArrowLeft className="h-4 w-4" />
-              Voltar
-            </Link>
-          </Button>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight">
-              Pedido <span className="font-mono">{order.orderNumber}</span>
-            </h1>
-            <OrderStatusBadge status={order.status} size="md" />
-          </div>
-          <p className="text-muted-foreground">
+    <div className="space-y-8">
+      <PageHeader
+        title={
+          <span className="inline-flex items-baseline gap-2">
+            Pedido
+            <span className="font-mono text-foreground/70">
+              {order.orderNumber}
+            </span>
+          </span>
+        }
+        description={
+          <>
+            Emitido em{" "}
             <span className="font-mono">{formatDate(order.orderedAt)}</span> ·{" "}
             {order.supplier.name}
-          </p>
-        </div>
-        <OrderActionsBar
-          orderId={order.id}
-          status={order.status}
-          isAdmin={me.role === "ADMIN"}
-        />
-      </div>
+          </>
+        }
+        breadcrumbs={[
+          { label: "Pedidos", href: "/pedidos" },
+          { label: order.orderNumber },
+        ]}
+        backHref="/pedidos"
+        meta={<OrderStatusBadge status={order.status} size="md" />}
+        actions={
+          <OrderActionsBar
+            orderId={order.id}
+            status={order.status}
+            isAdmin={me.role === "ADMIN"}
+          />
+        }
+      />
 
       {order.status === "REPROVADO" && order.rejectionReason && (
-        <div className="rounded-md border border-red-200 bg-red-50 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-red-900">
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50/70 p-4"
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-red-900/70">
             Motivo da reprovação
           </p>
-          <p className="mt-1 text-sm text-red-900">{order.rejectionReason}</p>
+          <p className="mt-1.5 text-sm text-red-950">{order.rejectionReason}</p>
           {order.reviewedBy && order.reviewedAt && (
             <p className="mt-2 text-xs text-red-900/70">
-              Reprovado por {order.reviewedBy.name} em{" "}
-              {formatDate(order.reviewedAt)}
+              Reprovado por <strong>{order.reviewedBy.name}</strong> em{" "}
+              {formatDate(order.reviewedAt)}.
             </p>
           )}
         </div>
       )}
 
       {order.status === "APROVADO" && order.reviewedBy && order.reviewedAt && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs text-emerald-900">
+        <div
+          role="status"
+          className="rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-3 text-xs text-emerald-900"
+        >
           Aprovado por <strong>{order.reviewedBy.name}</strong> em{" "}
           {formatDate(order.reviewedAt)}.
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-3">
         <InfoCard
+          title="Dados de origem"
           items={[
             ["Fornecedor", order.supplier.name],
             ["Departamento", order.department.name],
@@ -116,82 +126,143 @@ export default async function OrderDetailPage({
           ]}
         />
         <InfoCard
+          title="Aplicação / Histórico"
           items={[
-            ["Aplicação / Motivo", order.reason.description],
-            ["Última troca (motivo)", formatDate(order.reason.lastUsedAt)],
-            [
-              "Penúltima troca (motivo)",
-              formatDate(order.reason.previousUsedAt),
-            ],
-            [
-              "Última compra (item mais recente)",
-              formatDate(lastPurchaseItem),
-            ],
+            ["Motivo", order.reason.description],
+            ["Última troca", formatDate(order.reason.lastUsedAt)],
+            ["Penúltima troca", formatDate(order.reason.previousUsedAt)],
+            ["Última compra do item", formatDate(lastPurchaseItem)],
             ["Autorizado por", order.authorizedBy ?? "—"],
           ]}
         />
+        <Card>
+          <CardHeader className="border-b border-border bg-muted/40 py-3">
+            <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              Resumo financeiro
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 py-5">
+            <div>
+              <p className="text-xs text-muted-foreground">Total do pedido</p>
+              <p className="font-mono text-3xl font-semibold tracking-tight tabular-nums">
+                {currency.format(total)}
+              </p>
+            </div>
+            <dl className="grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-lg border border-border bg-muted/30 p-3">
+                <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Itens
+                </dt>
+                <dd className="mt-1 font-mono text-xl font-semibold tabular-nums">
+                  {order.items.length}
+                </dd>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/30 p-3">
+                <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Quantidade
+                </dt>
+                <dd className="mt-1 font-mono text-xl font-semibold tabular-nums">
+                  {order.items.reduce((s, i) => s + i.quantity, 0)}
+                </dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Itens</CardTitle>
+      <Card className="overflow-hidden pb-0">
+        <CardHeader className="border-b border-border bg-muted/40">
+          <CardTitle className="text-base">Itens do pedido</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Item</TableHead>
-                <TableHead>Qtd.</TableHead>
-                <TableHead>Unid.</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead className="text-right">Preço unit.</TableHead>
-                <TableHead className="text-right">Preço total</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {order.items.map((it, i) => (
-                <TableRow key={it.id}>
-                  <TableCell className="font-mono">{i + 1}</TableCell>
-                  <TableCell className="font-mono tabular-nums">
-                    {it.quantity}
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    #
+                  </TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    Qtd.
+                  </TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    Unid.
+                  </TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    Descrição
+                  </TableHead>
+                  <TableHead className="text-right text-[11px] uppercase tracking-wide text-muted-foreground">
+                    Preço unit.
+                  </TableHead>
+                  <TableHead className="text-right text-[11px] uppercase tracking-wide text-muted-foreground">
+                    Preço total
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {order.items.map((it, i) => (
+                  <TableRow key={it.id} className="border-border">
+                    <TableCell className="font-mono text-muted-foreground">
+                      {String(i + 1).padStart(2, "0")}
+                    </TableCell>
+                    <TableCell className="font-mono tabular-nums">
+                      {it.quantity}
+                    </TableCell>
+                    <TableCell className="font-mono text-muted-foreground">
+                      {it.product.unit}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {it.product.name}
+                    </TableCell>
+                    <TableCell className="text-right font-mono tabular-nums text-muted-foreground">
+                      {currency.format(it.unitPrice)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-medium tabular-nums">
+                      {currency.format(it.totalPrice)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="border-t border-border bg-muted/40 hover:bg-muted/40">
+                  <TableCell colSpan={5} className="text-right font-semibold">
+                    Total
                   </TableCell>
-                  <TableCell className="font-mono">{it.product.unit}</TableCell>
-                  <TableCell className="font-medium">{it.product.name}</TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">
-                    {currency.format(it.unitPrice)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">
-                    {currency.format(it.totalPrice)}
+                  <TableCell className="text-right font-mono text-lg font-bold tabular-nums">
+                    {currency.format(total)}
                   </TableCell>
                 </TableRow>
-              ))}
-              <TableRow className="bg-muted/40">
-                <TableCell colSpan={5} className="text-right font-semibold">
-                  Total
-                </TableCell>
-                <TableCell className="text-right font-mono text-lg font-bold tabular-nums">
-                  {currency.format(total)}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
   );
 }
 
-function InfoCard({ items }: { items: [string, string][] }) {
+function InfoCard({
+  title,
+  items,
+}: {
+  title: string;
+  items: [string, string][];
+}) {
   return (
-    <Card>
-      <CardContent className="divide-y p-0">
+    <Card className="overflow-hidden">
+      <CardHeader className="border-b border-border bg-muted/40 py-3">
+        <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="divide-y divide-border p-0">
         {items.map(([label, value]) => (
           <div
             key={label}
-            className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
+            className="flex items-start justify-between gap-4 px-4 py-3 text-sm"
           >
             <span className="text-muted-foreground">{label}</span>
-            <span className="font-medium text-right">{value}</span>
+            <span className="text-right font-medium text-foreground">
+              {value}
+            </span>
           </div>
         ))}
       </CardContent>

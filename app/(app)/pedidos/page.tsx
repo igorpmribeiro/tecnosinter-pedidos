@@ -1,8 +1,16 @@
 import Link from "next/link";
-import { Plus, ClipboardList, DollarSign, Calendar, TrendingUp } from "lucide-react";
+import {
+  Plus,
+  ClipboardList,
+  DollarSign,
+  CalendarRange,
+  Clock,
+} from "lucide-react";
 import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { currency, formatDate } from "@/lib/format";
+import { PageHeader } from "@/components/page-header";
+import { StatCard } from "@/components/stat-card";
 import { OrdersTable } from "./orders-table";
 
 export const dynamic = "force-dynamic";
@@ -38,95 +46,68 @@ export default async function PedidosPage() {
     (o) => new Date(o.orderedAt) >= startOfMonth,
   );
   const monthValue = monthOrders.reduce((sum, o) => sum + o.total, 0);
+  const pendingCount = rows.filter((o) => o.status === "AGUARDANDO").length;
   const lastOrder = rows[0];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Pedidos</h1>
-          <p className="text-muted-foreground">
-            Gerenciamento de pedidos internos do setor.
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/pedidos/novo">
-            <Plus className="h-4 w-4" />
-            Adicionar pedido
-          </Link>
-        </Button>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Pedidos"
+        description="Acompanhe, aprove e registre os pedidos internos do setor de manutenção e suprimentos."
+        breadcrumbs={[{ label: "Tecnosinter" }, { label: "Pedidos" }]}
+        actions={
+          <Button asChild>
+            <Link href="/pedidos/novo">
+              <Plus className="h-4 w-4" aria-hidden />
+              Novo pedido
+            </Link>
+          </Button>
+        }
+      />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section
+        aria-label="Indicadores"
+        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+      >
         <StatCard
           label="Total de pedidos"
-          value={rows.length.toString()}
+          value={rows.length}
           hint={
             lastOrder
-              ? `Último: ${lastOrder.orderNumber} em ${formatDate(lastOrder.orderedAt)}`
+              ? `Último ${lastOrder.orderNumber} em ${formatDate(lastOrder.orderedAt)}`
               : "Nenhum pedido ainda"
           }
-          icon={<ClipboardList className="h-4 w-4" />}
+          icon={ClipboardList}
         />
         <StatCard
           label="Valor acumulado"
           value={currency.format(totalValue)}
-          hint={`Em ${rows.length} ${rows.length === 1 ? "pedido" : "pedidos"}`}
-          icon={<DollarSign className="h-4 w-4" />}
+          hint={`Em ${rows.length} ${rows.length === 1 ? "pedido" : "pedidos"} registrados`}
+          icon={DollarSign}
         />
         <StatCard
           label="Pedidos no mês"
-          value={monthOrders.length.toString()}
-          hint={`Mês atual — desde ${formatDate(startOfMonth)}`}
-          icon={<Calendar className="h-4 w-4" />}
+          value={monthOrders.length}
+          hint={`${currency.format(monthValue)} desde ${formatDate(startOfMonth)}`}
+          icon={CalendarRange}
+          intent="primary"
         />
         <StatCard
-          label="Valor no mês"
-          value={currency.format(monthValue)}
-          hint={monthOrders.length === 0 ? "Sem pedidos no mês" : "Acumulado mensal"}
-          icon={<TrendingUp className="h-4 w-4" />}
-          accent
+          label="Aguardando aprovação"
+          value={pendingCount}
+          hint={
+            pendingCount === 0
+              ? "Nenhum pedido pendente"
+              : pendingCount === 1
+                ? "1 pedido para revisar"
+                : `${pendingCount} pedidos para revisar`
+          }
+          icon={Clock}
+          intent={pendingCount > 0 ? "warning" : "neutral"}
         />
-      </div>
+      </section>
 
       <OrdersTable rows={rows} />
-    </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  hint,
-  icon,
-  accent = false,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-  icon: React.ReactNode;
-  accent?: boolean;
-}) {
-  return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {label}
-        </span>
-        <span
-          className={
-            accent
-              ? "grid h-7 w-7 place-items-center rounded-md bg-accent/20 text-accent-foreground"
-              : "grid h-7 w-7 place-items-center rounded-md bg-primary/10 text-primary"
-          }
-        >
-          {icon}
-        </span>
-      </div>
-      <div className="mt-2 font-mono text-2xl font-semibold tracking-tight">
-        {value}
-      </div>
-      <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
     </div>
   );
 }

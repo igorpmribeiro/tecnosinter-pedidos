@@ -190,14 +190,15 @@ export function OrderForm({
           <option key={p.name} value={p.name} />
         ))}
       </datalist>
-      <Card>
-        <CardHeader>
-          <CardTitle>Dados do pedido</CardTitle>
+      <Card className="overflow-hidden">
+        <CardHeader className="border-b border-border bg-muted/40 py-4">
+          <CardTitle className="text-base">Dados do pedido</CardTitle>
           <CardDescription>
-            Preencha os dados principais do pedido.
+            Preencha os dados principais. Campos com sugestões puxam do
+            histórico.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
+        <CardContent className="grid gap-4 p-5 md:grid-cols-3">
           <Field label="N° Pedido" error={errors.orderNumber?.message}>
             <Input {...register("orderNumber")} placeholder="012/26" />
           </Field>
@@ -296,13 +297,12 @@ export function OrderForm({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
+      <Card className="overflow-hidden">
+        <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-border bg-muted/40 py-4">
           <div>
-            <CardTitle>Produtos</CardTitle>
+            <CardTitle className="text-base">Produtos</CardTitle>
             <CardDescription>
-              Adicione um ou mais produtos. O preço total é calculado
-              automaticamente.
+              O preço total é calculado automaticamente.
             </CardDescription>
           </div>
           <Button
@@ -318,11 +318,11 @@ export function OrderForm({
               })
             }
           >
-            <Plus className="h-4 w-4" />
-            Adicionar produto
+            <Plus className="h-4 w-4" aria-hidden />
+            Adicionar
           </Button>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 p-5">
           {fields.map((field, index) => {
             const item = items[index];
             const match = item?.productName
@@ -444,9 +444,13 @@ export function OrderForm({
             );
           })}
 
-          <div className="flex items-center justify-end gap-4 border-t pt-4 text-lg font-semibold">
-            <span>Total do pedido:</span>
-            <span>{currency.format(total)}</span>
+          <div className="flex items-center justify-between gap-4 rounded-lg bg-muted/50 px-4 py-3 ring-1 ring-border">
+            <span className="text-sm font-medium text-muted-foreground">
+              Total do pedido
+            </span>
+            <span className="font-mono text-2xl font-semibold tabular-nums">
+              {currency.format(total)}
+            </span>
           </div>
         </CardContent>
       </Card>

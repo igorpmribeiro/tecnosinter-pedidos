@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { OrderForm } from "../order-form";
+import { PageHeader } from "@/components/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -18,13 +19,16 @@ export default async function NovoPedidoPage() {
     ]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Novo pedido</h1>
-        <p className="text-muted-foreground">
-          Cadastre um novo pedido e seus produtos. O PDF é gerado ao salvar.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Novo pedido"
+        description="Cadastre um novo pedido com seus produtos. O PDF é gerado ao salvar."
+        breadcrumbs={[
+          { label: "Pedidos", href: "/pedidos" },
+          { label: "Novo" },
+        ]}
+        backHref="/pedidos"
+      />
 
       <OrderForm
         products={products.map((p) => ({
