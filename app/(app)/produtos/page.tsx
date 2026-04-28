@@ -18,6 +18,7 @@ import { currency, formatDate } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Produtos · Tecnosinter" };
 
 export default async function ProdutosPage() {
   const products = await db.product.findMany({

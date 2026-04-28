@@ -14,6 +14,7 @@ import { StatCard } from "@/components/stat-card";
 import { OrdersTable } from "./orders-table";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Pedidos · Tecnosinter" };
 
 export default async function PedidosPage() {
   const orders = await db.order.findMany({

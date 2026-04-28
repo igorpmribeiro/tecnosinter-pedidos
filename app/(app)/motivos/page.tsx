@@ -18,6 +18,7 @@ import { formatDate } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Motivos · Tecnosinter" };
 
 export default async function MotivosPage() {
   const reasons = await db.reason.findMany({

@@ -3,6 +3,7 @@ import { OrderForm } from "../order-form";
 import { PageHeader } from "@/components/page-header";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Novo pedido · Tecnosinter" };
 
 export default async function NovoPedidoPage() {
   const [products, suppliers, departments, requesters, reasons, lastOrder] =

@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/page-header";
 import { NewUserForm } from "./new-user-form";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Novo usuário · Tecnosinter" };
 
 export default async function NovoUsuarioPage() {
   await requireAdmin();

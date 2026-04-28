@@ -22,6 +22,23 @@ import { OrderActionsBar } from "./order-actions-bar";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const order = await db.order.findUnique({
+    where: { id },
+    select: { orderNumber: true },
+  });
+  return {
+    title: order
+      ? `Pedido ${order.orderNumber} · Tecnosinter`
+      : "Pedido · Tecnosinter",
+  };
+}
+
 export default async function OrderDetailPage({
   params,
 }: {

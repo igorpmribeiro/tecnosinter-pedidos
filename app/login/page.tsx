@@ -2,6 +2,7 @@ import { Building2, ShieldCheck, Workflow } from "lucide-react";
 import { LoginForm } from "./login-form";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Entrar · Tecnosinter" };
 
 export default async function LoginPage({
   searchParams,

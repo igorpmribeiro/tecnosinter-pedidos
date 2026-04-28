@@ -23,6 +23,7 @@ import { PageHeader } from "@/components/page-header";
 import { DeleteUserButton } from "./delete-user-button";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Usuários · Tecnosinter" };
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
