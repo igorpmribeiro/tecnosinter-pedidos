@@ -18,7 +18,8 @@ import { currency, formatDate } from "@/lib/format";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth/dal";
-import { OrderActionsBar } from "./order-actions-bar";
+import { getProductHistory } from "@/lib/product-history";
+import { OrderActionsBar, type ApprovalContext } from "./order-actions-bar";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +70,33 @@ export default async function OrderDetailPage({
     return max;
   }, null);
 
+  const history =
+    order.status === "AGUARDANDO" && me.role === "ADMIN"
+      ? await getProductHistory(order.items.map((i) => i.productId))
+      : null;
+  const approvalContext: ApprovalContext | undefined = history
+    ? {
+        orderNumber: order.orderNumber,
+        supplier: order.supplier.name,
+        department: order.department.name,
+        requester: order.requester.name,
+        reason: order.reason.description,
+        deliveryDays: order.deliveryDays,
+        items: order.items.map((it) => ({
+          id: it.id,
+          productName: it.product.name,
+          unit: it.product.unit,
+          unitPrice: it.unitPrice,
+          quantity: it.quantity,
+          lastOrderedAt: it.product.lastOrderedAt?.toISOString() ?? null,
+          lastPrice: it.product.lastPrice,
+          lastSupplier: history.get(it.productId)?.lastSupplier ?? null,
+          lastDeliveryDays:
+            history.get(it.productId)?.lastDeliveryDays ?? null,
+        })),
+      }
+    : undefined;
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -98,6 +126,7 @@ export default async function OrderDetailPage({
             orderId={order.id}
             status={order.status}
             isAdmin={me.role === "ADMIN"}
+            approvalContext={approvalContext}
           />
         }
       />

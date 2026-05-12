@@ -57,6 +57,8 @@ type ProductInfo = {
   unit: string;
   lastPrice: number | null;
   lastOrderedAt: string | null;
+  lastSupplier: string | null;
+  lastDeliveryDays: number | null;
 };
 type ReasonInfo = {
   description: string;
@@ -177,10 +179,10 @@ export function OrderForm({
   const submitLabel =
     mode.kind === "edit"
       ? isPending
-        ? "Salvando..."
+        ? "Salvando…"
         : "Salvar alterações"
       : isPending
-        ? "Salvando..."
+        ? "Salvando…"
         : "Salvar pedido";
 
   return (
@@ -200,7 +202,11 @@ export function OrderForm({
         </CardHeader>
         <CardContent className="grid gap-4 p-5 md:grid-cols-3">
           <Field label="N° Pedido" error={errors.orderNumber?.message}>
-            <Input {...register("orderNumber")} placeholder="012/26" />
+            <Input
+              {...register("orderNumber")}
+              autoComplete="off"
+              placeholder="Ex.: 012/26…"
+            />
           </Field>
           <Field label="Data do pedido" error={errors.orderedAt?.message}>
             <Input type="date" {...register("orderedAt")} />
@@ -219,8 +225,9 @@ export function OrderForm({
           <Field label="Fornecedor" error={errors.supplierName?.message}>
             <Input
               {...register("supplierName")}
+              autoComplete="off"
               list="suppliers-list"
-              placeholder="Ex.: Bripeças"
+              placeholder="Ex.: Bripeças…"
             />
             <datalist id="suppliers-list">
               {suppliers.map((s) => (
@@ -231,8 +238,9 @@ export function OrderForm({
           <Field label="Departamento" error={errors.departmentName?.message}>
             <Input
               {...register("departmentName")}
+              autoComplete="off"
               list="departments-list"
-              placeholder="Ex.: Manut Mec"
+              placeholder="Ex.: Manut Mec…"
             />
             <datalist id="departments-list">
               {departments.map((d) => (
@@ -243,8 +251,9 @@ export function OrderForm({
           <Field label="Requisitante" error={errors.requesterName?.message}>
             <Input
               {...register("requesterName")}
+              autoComplete="off"
               list="requesters-list"
-              placeholder="Ex.: Henrique Tiago"
+              placeholder="Ex.: Henrique Tiago…"
             />
             <datalist id="requesters-list">
               {requesters.map((r) => (
@@ -254,13 +263,21 @@ export function OrderForm({
           </Field>
 
           <Field label="Centro de custo" error={errors.costCenter?.message}>
-            <Input {...register("costCenter")} placeholder="Ex.: Manut Mec" />
+            <Input
+              {...register("costCenter")}
+              autoComplete="off"
+              placeholder="Ex.: Manut Mec…"
+            />
           </Field>
           <Field
             label="Autorizado por (opcional)"
             error={errors.authorizedBy?.message}
           >
-            <Input {...register("authorizedBy")} placeholder="Nome" />
+            <Input
+              {...register("authorizedBy")}
+              autoComplete="off"
+              placeholder="Ex.: João Silva…"
+            />
           </Field>
           <div />
 
@@ -271,8 +288,9 @@ export function OrderForm({
             >
               <Input
                 {...register("reasonDescription")}
+                autoComplete="off"
                 list="reasons-list"
-                placeholder="Ex.: Troca das telas da peneira"
+                placeholder="Ex.: Troca das telas da peneira…"
               />
               <datalist id="reasons-list">
                 {reasons.map((r) => (
@@ -346,8 +364,9 @@ export function OrderForm({
                           onBlur: (e) =>
                             applyProductDefaults(index, e.target.value),
                         })}
+                        autoComplete="off"
                         list="products-list"
-                        placeholder="Ex.: Régua de tensionamento 2500"
+                        placeholder="Ex.: Régua de tensionamento 2500…"
                       />
                     </Field>
                   </div>
@@ -386,6 +405,8 @@ export function OrderForm({
                     >
                       <Input
                         type="number"
+                        inputMode="decimal"
+                        autoComplete="off"
                         step="0.01"
                         min={0}
                         {...register(`items.${index}.quantity`, {
@@ -401,6 +422,8 @@ export function OrderForm({
                     >
                       <Input
                         type="number"
+                        inputMode="decimal"
+                        autoComplete="off"
                         step="0.01"
                         min={0}
                         {...register(`items.${index}.unitPrice`, {
@@ -418,19 +441,33 @@ export function OrderForm({
                       disabled={fields.length === 1}
                       aria-label="Remover item"
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <Trash2 className="h-4 w-4 text-destructive" aria-hidden />
                     </Button>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                  <span>
+                  <span className="flex flex-wrap gap-x-3 gap-y-1">
                     {match ? (
                       <>
-                        <strong>Última compra:</strong>{" "}
-                        {formatDate(match.lastOrderedAt)}
-                        {match.lastPrice != null
-                          ? ` — ${currency.format(match.lastPrice)}`
-                          : ""}
+                        <span>
+                          <strong>Última compra:</strong>{" "}
+                          {formatDate(match.lastOrderedAt)}
+                          {match.lastPrice != null
+                            ? ` — ${currency.format(match.lastPrice)}`
+                            : ""}
+                        </span>
+                        {match.lastSupplier && (
+                          <span>
+                            <strong>Último fornecedor:</strong>{" "}
+                            {match.lastSupplier}
+                          </span>
+                        )}
+                        {match.lastDeliveryDays != null && (
+                          <span>
+                            <strong>Último prazo:</strong>{" "}
+                            {match.lastDeliveryDays} dias
+                          </span>
+                        )}
                       </>
                     ) : (
                       "Produto novo — será cadastrado no primeiro uso."
@@ -474,7 +511,7 @@ export function OrderForm({
         >
           Cancelar
         </Button>
-        <Button type="submit" disabled={isPending}>
+        <Button type="submit" disabled={isPending} aria-busy={isPending}>
           {submitLabel}
         </Button>
       </div>

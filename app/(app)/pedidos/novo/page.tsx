@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { OrderForm } from "../order-form";
 import { PageHeader } from "@/components/page-header";
+import { getProductHistory } from "@/lib/product-history";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Novo pedido · Tecnosinter" };
@@ -18,6 +19,7 @@ export default async function NovoPedidoPage() {
         select: { orderNumber: true },
       }),
     ]);
+  const history = await getProductHistory(products.map((p) => p.id));
 
   return (
     <div className="space-y-8">
@@ -37,6 +39,8 @@ export default async function NovoPedidoPage() {
           unit: p.unit,
           lastPrice: p.lastPrice,
           lastOrderedAt: p.lastOrderedAt?.toISOString() ?? null,
+          lastSupplier: history.get(p.id)?.lastSupplier ?? null,
+          lastDeliveryDays: history.get(p.id)?.lastDeliveryDays ?? null,
         }))}
         suppliers={suppliers.map((s) => s.name)}
         departments={departments.map((d) => d.name)}

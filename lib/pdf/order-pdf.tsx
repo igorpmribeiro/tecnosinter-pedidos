@@ -173,25 +173,6 @@ const styles = StyleSheet.create({
   yellow: {
     backgroundColor: "#fff59d",
   },
-  sigRow: {
-    marginTop: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  sigBox: {
-    flex: 1,
-    borderBottomWidth: 1,
-    borderBottomColor: "#000",
-    borderBottomStyle: "solid",
-    paddingTop: 30,
-    paddingBottom: 2,
-  },
-  sigLabel: {
-    fontSize: 8,
-    marginTop: 4,
-    textAlign: "center",
-  },
   footer: {
     marginTop: 10,
     fontSize: 8,
@@ -347,21 +328,6 @@ function OrderDoc({ order }: { order: FullOrder }) {
           <View style={[styles.applicationRow, { borderBottomWidth: 0 }]}>
             <Text style={styles.label}>Autorizado:</Text>
             <Text>{order.authorizedBy ?? ""}</Text>
-          </View>
-        </View>
-
-        <View style={styles.sigRow}>
-          <View style={{ flex: 1 }}>
-            <View style={styles.sigBox}></View>
-            <Text style={styles.sigLabel}>Assinatura do Requisitante</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <View style={styles.sigBox}></View>
-            <Text style={styles.sigLabel}>Responsável do Departamento</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <View style={styles.sigBox}></View>
-            <Text style={styles.sigLabel}>Autorização da Compra</Text>
           </View>
         </View>
       </Page>

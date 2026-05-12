@@ -208,6 +208,80 @@ export async function approveOrder(orderId: string): Promise<void> {
   revalidatePath(`/pedidos/${orderId}`);
 }
 
+const approveItemsSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        quantity: z.coerce
+          .number()
+          .nonnegative("Quantidade não pode ser negativa"),
+      }),
+    )
+    .min(1, "Informe ao menos 1 item."),
+});
+
+export type ApproveOrderInput = z.infer<typeof approveItemsSchema>;
+
+export async function approveOrderWithItems(
+  orderId: string,
+  raw: ApproveOrderInput,
+): Promise<void> {
+  const me = await requireAdmin();
+  const parsed = approveItemsSchema.parse(raw);
+
+  const order = await db.order.findUnique({
+    where: { id: orderId },
+    include: { items: true },
+  });
+  if (!order) throw new Error("Pedido não encontrado.");
+  if (order.status !== "AGUARDANDO")
+    throw new Error("Este pedido já foi revisado.");
+
+  const itemMap = new Map(order.items.map((i) => [i.id, i]));
+  for (const incoming of parsed.items) {
+    if (!itemMap.has(incoming.id))
+      throw new Error("Item não pertence a este pedido.");
+  }
+
+  const remaining = parsed.items.filter((i) => i.quantity > 0).length;
+  if (remaining === 0)
+    throw new Error("É necessário manter ao menos 1 item aprovado.");
+
+  const itemOps = parsed.items.flatMap((incoming) => {
+    const current = itemMap.get(incoming.id)!;
+    if (incoming.quantity === 0) {
+      return [db.orderItem.delete({ where: { id: incoming.id } })];
+    }
+    if (incoming.quantity !== current.quantity) {
+      return [
+        db.orderItem.update({
+          where: { id: incoming.id },
+          data: {
+            quantity: incoming.quantity,
+            totalPrice: incoming.quantity * current.unitPrice,
+          },
+        }),
+      ];
+    }
+    return [];
+  });
+
+  const orderUpdate = db.order.update({
+    where: { id: orderId },
+    data: {
+      status: "APROVADO",
+      rejectionReason: null,
+      reviewedAt: new Date(),
+      reviewedById: me.id,
+    },
+  });
+
+  await db.$transaction([...itemOps, orderUpdate]);
+  revalidatePath("/pedidos");
+  revalidatePath(`/pedidos/${orderId}`);
+}
+
 export async function rejectOrder(
   orderId: string,
   reason: string,

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { PageHeader } from "@/components/page-header";
 import { OrderForm } from "../../order-form";
+import { getProductHistory } from "@/lib/product-history";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,7 @@ export default async function EditarPedidoPage({
 
   if (!order) notFound();
 
+  const history = await getProductHistory(products.map((p) => p.id));
   const orderedAtIso = order.orderedAt.toISOString().slice(0, 10);
 
   return (
@@ -78,6 +80,8 @@ export default async function EditarPedidoPage({
           unit: p.unit,
           lastPrice: p.lastPrice,
           lastOrderedAt: p.lastOrderedAt?.toISOString() ?? null,
+          lastSupplier: history.get(p.id)?.lastSupplier ?? null,
+          lastDeliveryDays: history.get(p.id)?.lastDeliveryDays ?? null,
         }))}
         suppliers={suppliers.map((s) => s.name)}
         departments={departments.map((d) => d.name)}
