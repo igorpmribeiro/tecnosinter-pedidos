@@ -212,6 +212,13 @@ function ApproveDialog({
   const [quantities, setQuantities] = useState<Record<string, string>>(() =>
     Object.fromEntries(context.items.map((i) => [i.id, String(i.quantity)])),
   );
+  const [prices, setPrices] = useState<Record<string, string>>(() =>
+    Object.fromEntries(context.items.map((i) => [i.id, String(i.unitPrice)])),
+  );
+  const [supplierName, setSupplierName] = useState<string>(context.supplier);
+  const [deliveryDays, setDeliveryDays] = useState<string>(
+    String(context.deliveryDays),
+  );
 
   const numericQuantities = useMemo(() => {
     const map: Record<string, number> = {};
@@ -222,8 +229,23 @@ function ApproveDialog({
     return map;
   }, [quantities]);
 
+  const numericPrices = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const id of Object.keys(prices)) {
+      const v = Number(prices[id]);
+      map[id] = Number.isFinite(v) && v >= 0 ? v : 0;
+    }
+    return map;
+  }, [prices]);
+
+  const numericDeliveryDays = useMemo(() => {
+    const value = Number(deliveryDays);
+    return Number.isInteger(value) && value > 0 ? value : 0;
+  }, [deliveryDays]);
+
   const total = context.items.reduce(
-    (sum, it) => sum + (numericQuantities[it.id] ?? 0) * it.unitPrice,
+    (sum, it) =>
+      sum + (numericQuantities[it.id] ?? 0) * (numericPrices[it.id] ?? it.unitPrice),
     0,
   );
   const approvedCount = context.items.filter(
@@ -234,11 +256,22 @@ function ApproveDialog({
     const q = numericQuantities[it.id] ?? 0;
     return !Number.isFinite(q) || q < 0;
   });
+  const hasPriceError = context.items.some((it) => {
+    const p = numericPrices[it.id] ?? it.unitPrice;
+    return !Number.isFinite(p) || p < 0;
+  });
+  const hasDeliveryDaysError =
+    !Number.isInteger(numericDeliveryDays) || numericDeliveryDays <= 0;
 
   function reset() {
     setQuantities(
       Object.fromEntries(context.items.map((i) => [i.id, String(i.quantity)])),
     );
+    setPrices(
+      Object.fromEntries(context.items.map((i) => [i.id, String(i.unitPrice)])),
+    );
+    setSupplierName(context.supplier);
+    setDeliveryDays(String(context.deliveryDays));
   }
 
   function handleOpenChange(next: boolean) {
@@ -255,13 +288,26 @@ function ApproveDialog({
       toast.error("Verifique as quantidades informadas.");
       return;
     }
+    if (hasPriceError) {
+      toast.error("Verifique os preços informados.");
+      return;
+    }
+    if (hasDeliveryDaysError) {
+      toast.error("Verifique o prazo informado.");
+      return;
+    }
     const items = context.items.map((it) => ({
       id: it.id,
       quantity: numericQuantities[it.id] ?? 0,
+      unitPrice: numericPrices[it.id] ?? it.unitPrice,
     }));
     startTransition(async () => {
       try {
-        await approveOrderWithItems(orderId, { items });
+        await approveOrderWithItems(orderId, {
+          supplierName,
+          deliveryDays: numericDeliveryDays,
+          items,
+        });
         toast.success("Pedido aprovado.");
         onOpenChange(false);
       } catch (err) {
@@ -282,13 +328,26 @@ function ApproveDialog({
         </DialogHeader>
 
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg border border-border bg-muted/30 p-3 text-xs sm:grid-cols-4">
-          <Field label="Fornecedor" value={context.supplier} />
+          <Field label="Fornecedor">
+            <Input
+              value={supplierName}
+              onChange={(e) => setSupplierName(e.target.value)}
+              autoComplete="off"
+            />
+          </Field>
+          <Field label="Prazo de entrega">
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              step="1"
+              value={deliveryDays}
+              onChange={(e) => setDeliveryDays(e.target.value)}
+              autoComplete="off"
+            />
+          </Field>
           <Field label="Departamento" value={context.department} />
           <Field label="Requisitante" value={context.requester} />
-          <Field
-            label="Prazo de entrega"
-            value={`${context.deliveryDays} dias`}
-          />
           <div className="col-span-full">
             <Field label="Motivo" value={context.reason} />
           </div>
@@ -308,7 +367,8 @@ function ApproveDialog({
             <tbody>
               {context.items.map((it) => {
                 const q = numericQuantities[it.id] ?? 0;
-                const subtotal = q * it.unitPrice;
+                const price = numericPrices[it.id] ?? it.unitPrice;
+                const subtotal = q * price;
                 const reduced = q < it.quantity;
                 const removed = q === 0;
                 return (
@@ -342,10 +402,10 @@ function ApproveDialog({
                     <td className="p-2 text-right">
                       <Input
                         type="number"
-                        inputMode="decimal"
+                        inputMode="numeric"
                         autoComplete="off"
                         min={0}
-                        step="0.01"
+                        step="1"
                         value={quantities[it.id] ?? ""}
                         onChange={(e) =>
                           setQuantities((prev) => ({
@@ -367,7 +427,19 @@ function ApproveDialog({
                       ) : null}
                     </td>
                     <td className="p-2 text-right font-mono tabular-nums text-muted-foreground">
-                      {currency.format(it.unitPrice)}
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        autoComplete="off"
+                        min={0}
+                        step="0.01"
+                        value={prices[it.id] ?? ""}
+                        onChange={(e) =>
+                          setPrices((prev) => ({ ...prev, [it.id]: e.target.value }))
+                        }
+                        aria-label={`Preço unitário para ${it.productName}`}
+                        className="ml-auto h-8 w-28 text-right font-mono tabular-nums"
+                      />
                     </td>
                     <td className="p-2 text-right font-mono font-medium tabular-nums">
                       {currency.format(subtotal)}
@@ -401,7 +473,13 @@ function ApproveDialog({
           <Button
             type="button"
             onClick={onApprove}
-            disabled={pending || approvedCount === 0 || hasError}
+            disabled={
+              pending ||
+              approvedCount === 0 ||
+              hasError ||
+              hasPriceError ||
+              hasDeliveryDaysError
+            }
             aria-busy={pending}
             className="bg-emerald-600 text-white hover:bg-emerald-700"
           >
@@ -421,13 +499,21 @@ function ApproveDialog({
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({
+  label,
+  value,
+  children,
+}: {
+  label: string;
+  value?: string;
+  children?: React.ReactNode;
+}) {
   return (
     <div>
       <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
         {label}
       </dt>
-      <dd className="text-sm font-medium text-foreground">{value}</dd>
+      <dd className="text-sm font-medium text-foreground">{children ?? value}</dd>
     </div>
   );
 }

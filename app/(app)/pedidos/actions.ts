@@ -209,6 +209,8 @@ export async function approveOrder(orderId: string): Promise<void> {
 }
 
 const approveItemsSchema = z.object({
+  supplierName: z.string().trim().optional(),
+  deliveryDays: z.coerce.number().int().positive().optional(),
   items: z
     .array(
       z.object({
@@ -216,6 +218,7 @@ const approveItemsSchema = z.object({
         quantity: z.coerce
           .number()
           .nonnegative("Quantidade não pode ser negativa"),
+        unitPrice: z.coerce.number().nonnegative().optional(),
       }),
     )
     .min(1, "Informe ao menos 1 item."),
@@ -232,7 +235,7 @@ export async function approveOrderWithItems(
 
   const order = await db.order.findUnique({
     where: { id: orderId },
-    include: { items: true },
+    include: { items: true, supplier: true },
   });
   if (!order) throw new Error("Pedido não encontrado.");
   if (order.status !== "AGUARDANDO")
@@ -253,28 +256,47 @@ export async function approveOrderWithItems(
     if (incoming.quantity === 0) {
       return [db.orderItem.delete({ where: { id: incoming.id } })];
     }
-    if (incoming.quantity !== current.quantity) {
+
+    const finalQty = incoming.quantity;
+    const finalPrice = incoming.unitPrice ?? current.unitPrice;
+    const updates: Record<string, unknown> = {};
+    if (finalQty !== current.quantity) updates.quantity = finalQty;
+    if (finalPrice !== current.unitPrice) updates.unitPrice = finalPrice;
+    if (Object.keys(updates).length > 0) {
+      updates.totalPrice = finalQty * finalPrice;
       return [
         db.orderItem.update({
           where: { id: incoming.id },
-          data: {
-            quantity: incoming.quantity,
-            totalPrice: incoming.quantity * current.unitPrice,
-          },
+          data: updates,
         }),
       ];
     }
     return [];
   });
 
+  const orderData: Record<string, unknown> = {
+    status: "APROVADO",
+    rejectionReason: null,
+    reviewedAt: new Date(),
+    reviewedById: me.id,
+  };
+
+  if (parsed.deliveryDays) {
+    orderData.deliveryDays = parsed.deliveryDays;
+  }
+
+  if (parsed.supplierName && parsed.supplierName !== order.supplier?.name) {
+    const supplier = await db.supplier.upsert({
+      where: { name: parsed.supplierName },
+      update: {},
+      create: { name: parsed.supplierName },
+    });
+    orderData.supplierId = supplier.id;
+  }
+
   const orderUpdate = db.order.update({
     where: { id: orderId },
-    data: {
-      status: "APROVADO",
-      rejectionReason: null,
-      reviewedAt: new Date(),
-      reviewedById: me.id,
-    },
+    data: orderData,
   });
 
   await db.$transaction([...itemOps, orderUpdate]);

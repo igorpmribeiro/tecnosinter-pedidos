@@ -369,26 +369,7 @@ function ServiceOrderDoc({ order }: { order: FullOrder }) {
         <Text style={styles.sectionTitle}>Observações</Text>
         <View style={styles.obsBox} />
 
-        <View style={styles.sigRow}>
-          <View style={{ flex: 1 }}>
-            <View style={styles.sigBox} />
-            <Text style={styles.sigLabel}>Solicitante</Text>
-            <Text style={[styles.sigLabel, { fontSize: 7, color: "#666" }]}>
-              {order.requester.name}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <View style={styles.sigBox} />
-            <Text style={styles.sigLabel}>Executor</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <View style={styles.sigBox} />
-            <Text style={styles.sigLabel}>Supervisor / Aprovação</Text>
-            <Text style={[styles.sigLabel, { fontSize: 7, color: "#666" }]}>
-              {order.reviewedBy?.name ?? ""}
-            </Text>
-          </View>
-        </View>
+        {/* signatures removed per request */}
 
         <Text style={styles.footer}>
           OS gerada a partir do pedido {order.orderNumber} ·{" "}

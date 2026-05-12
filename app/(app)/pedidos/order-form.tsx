@@ -407,7 +407,7 @@ export function OrderForm({
                         type="number"
                         inputMode="decimal"
                         autoComplete="off"
-                        step="0.01"
+                        step="1"
                         min={0}
                         {...register(`items.${index}.quantity`, {
                           valueAsNumber: true,
